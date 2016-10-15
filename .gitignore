@@ -2,3 +2,4 @@
 *.log
 *.dat
 *.sh
+samples/*
