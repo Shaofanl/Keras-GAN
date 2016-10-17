@@ -3,12 +3,12 @@ import numpy as np
 from keras.layers import Dense, Activation, Reshape, Flatten, Input
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Convolution2D, ZeroPadding2D
-#from keras.layers.normalization import BatchNormalization
+from keras.layers.normalization import BatchNormalization
 from keras.models import Sequential, Model
 import keras
 
 from ..utils.init import InitNormal
-from ..layers import  BN
+from ..layers import  BN 
 
 class Discriminator(Sequential):
     def __init__(self, 

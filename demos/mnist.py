@@ -30,7 +30,7 @@ if __name__ == '__main__':
     x, y, stream = get_mnist(nbatch)
 
 
-    g = Generator(g_size=(1, 28, 28), g_nb_filters=64, g_nb_noise=100, g_scales=2, g_FC=[1024])
+    g = Generator(g_size=(1, 28, 28), g_nb_filters=64, g_nb_coding=100, g_scales=2, g_FC=[1024])
     d = Discriminator(d_size=g.g_size, d_nb_filters=64, d_scales=2, d_FC=[1024])
     gan = GAN(g, d)
     gan.fit(stream, save_dir='./samples', k=1, nbatch=nbatch)

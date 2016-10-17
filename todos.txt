@@ -1,0 +1,6 @@
+1. test BatchNormalization layer
+2. implement conditional GAN 
+3. implement infoGAN
+4. test on re-id dataset 
+5. test loading
+
