@@ -24,7 +24,7 @@ class GAN(object):
         self.discriminator = discriminator
 
     def fit(self, data_stream, 
-                nvis=200, 
+                nvis=120, 
                 niter=1000,
                 nbatch=128,
                 nmax=None,
@@ -38,18 +38,22 @@ class GAN(object):
         gen_input, real_input = Input(dis.input_shape[1:]), Input(dis.input_shape[1:])
         dis2batch = Model([gen_input, real_input], [dis(gen_input), dis(real_input)])
 
+        import theano
+        theano.printing.pydotprint(gendis.outputs[0], outfile="pydotprint.pdf", format='pdf') 
+        print 'debug saved'
+
         dis.trainable = False # must prevent dis from updating
         gendis.compile(optimizer=opt, loss='binary_crossentropy')#fake_generate_loss) # same effect when y===1
         dis.trainable = True
         dis2batch.compile(optimizer=opt, loss='binary_crossentropy')#cross_entropy_loss)
 #       dis.compile(optimizer=opt, loss='binary_crossentropy')#cross_entropy_loss)
 
-        vis_grid(data_stream().next(), (10, 10), '{}/sample.png'.format(save_dir))
+        vis_grid(data_stream().next(), (5, 12), '{}/sample.png'.format(save_dir))
         sample_zmb = floatX(np.random.uniform(-1., 1., size=(nvis, gen.g_nb_coding)))
 
         for iteration in range(niter):
             samples = gen.generate(sample_zmb)
-            vis_grid(inverse_transform(samples), (10, 10), '{}/{}.png'.format(save_dir, iteration))
+            vis_grid(inverse_transform(samples), (5, 12), '{}/{}.png'.format(save_dir, iteration))
 
             ccc = 0
             n_updates = 0
@@ -135,11 +139,10 @@ class GAN(object):
 
 
 class InfoGAN(object):
-    def __init__(self, generator, discriminator, Qdist, lmbd=1e-5, **kwargs):
+    def __init__(self, generator, discriminator, Qdist, **kwargs):
         super(InfoGAN, self).__init__(**kwargs)
 
 #       self.gan = Sequential([generator, discriminator])
-        self.lmbd=lmbd
         self.Qdist = Qdist
         self.generator = generator
         self.discriminator = discriminator
@@ -161,17 +164,20 @@ class InfoGAN(object):
         gen_coding = Input(gen.input_shape[1:])
 
         dis2batch = Model([gen_input, real_input], [dis(gen_input), dis(real_input)])
-        neg_log_Q_c_given_x = (-self.lmbd) * gen.g_info.register( # register and get log_Q_c_given_x
+        neg_log_Q_c_given_x = -gen.g_info.register( # register and get log_Q_c_given_x
                                   gen.get_info_coding(gen_coding), # get oriented coding
                                   Q(dis_hidden(gen(gen_coding)))   # get parameters from Q network
                              )
-        neg_log_Q_c_given_x._keras_history = (Q, len(Q.inbound_nodes)-1, 0) # previous_layer, node_index, tensor_index
-        neg_log_Q_c_given_x._uses_learning_phase = 0
-        neg_log_Q_c_given_x._keras_shape = (None, 1)
 
         f = K.function([gen_coding], [neg_log_Q_c_given_x])
         res = f([gen.sample()])
         print res[0].shape
+
+        neg_log_Q_c_given_x = K.sum(neg_log_Q_c_given_x, axis=1)
+        neg_log_Q_c_given_x._keras_history = (Q, len(Q.inbound_nodes)-1, 0) # previous_layer, node_index, tensor_index
+        neg_log_Q_c_given_x._uses_learning_phase = 0
+        neg_log_Q_c_given_x._keras_shape = (None, 1)
+
 
         gendisQ = Model([gen_coding], [ dis(gen(gen_coding)), neg_log_Q_c_given_x ])
 
@@ -181,15 +187,12 @@ class InfoGAN(object):
         dis.trainable = True # train dis model with 2 SEPARATE batch
         dis2batch.compile(optimizer=opt, loss='binary_crossentropy')#cross_entropy_loss)
 
-        vis_grid(data_stream().next(), (10, 10), '{}/sample.png'.format(save_dir))
-        sample_zmb = floatX(gen.sample(nbatch))
-        sample_zmb[:, -10:] = 0.0
-        for ind in range(nbatch): 
-            sample_zmb[ind][-(ind%10+1)] = 1.0
+        vis_grid(data_stream().next(), (12, 10), '{}/sample.png'.format(save_dir))
+        sample_zmb = floatX(gen.sample(120, ordered=True, orderedN=10))
 
         for iteration in range(niter):
             samples = gen.predict(sample_zmb)
-            vis_grid(inverse_transform(samples), (10, 10), '{}/{}.png'.format(save_dir, iteration))
+            vis_grid(inverse_transform(samples), (12, 10), '{}/{}.png'.format(save_dir, iteration))
 
             ccc = 0
             n_updates = 0
@@ -197,7 +200,7 @@ class InfoGAN(object):
                 ccc += 1
                 if ccc > nmax/nbatch: break
 
-                Z = floatX(gen.sample())
+                Z = floatX(gen.sample(nbatch))
                 if n_updates % (k+1) == 0:
                     y = np.array([[1] * nbatch]).reshape(-1, 1)
                     

@@ -1,6 +1,6 @@
 import numpy as np
 
-from keras.layers import Dense, Activation, Reshape, Flatten, Input, Lambda
+from keras.layers import Activation, Reshape, Flatten, Input, Lambda
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Convolution2D, ZeroPadding2D
 from keras.layers.normalization import BatchNormalization
@@ -8,7 +8,9 @@ from keras.models import Sequential, Model
 import keras
 import keras.backend as K
 
-from ..layers import Deconvolution2D, BN # does not converge when using the default BN layer
+# does not converge when using the default BN layer
+# default Dense layer is too complicated
+from ..layers import Deconvolution2D, BN, Dense 
 from ..utils.init import InitNormal
 from ..utils.dist import ProductDist
 
@@ -128,10 +130,10 @@ class InfoGenerator(Generator):
     def generate_intermediate(self, x):
         raise NotImplemented
 
-    def sample(self, batch_size=128):
+    def sample(self, batch_size=128, **kwargs):
         x = np.concatenate([
             np.random.uniform(-1, 1, size=(batch_size, self.g_nb_noise)),
-            self.g_info.sample(batch_size)
+            self.g_info.sample(batch_size, **kwargs)
         ], axis=1)
         assert x.ndim == 2
         assert x.shape[1] == self.g_nb_coding

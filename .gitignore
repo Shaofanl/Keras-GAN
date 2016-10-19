@@ -5,3 +5,8 @@
 logs/
 samples/*
 temp/*
+protocol/*
+protocol
+model/*
+load.py
+*.pdf
