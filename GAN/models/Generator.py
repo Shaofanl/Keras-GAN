@@ -1,6 +1,6 @@
 import numpy as np
 
-from keras.layers import Activation, Reshape, Flatten, Input, Lambda
+from keras.layers import Dense, Activation, Reshape, Flatten, Input, Lambda
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Convolution2D, ZeroPadding2D
 from keras.layers.normalization import BatchNormalization
@@ -9,8 +9,7 @@ import keras
 import keras.backend as K
 
 # does not converge when using the default BN layer
-# default Dense layer is too complicated
-from ..layers import Deconvolution2D, BN, Dense 
+from ..layers import Deconvolution2D, BN 
 from ..utils.init import InitNormal
 from ..utils.dist import ProductDist
 

@@ -1,6 +1,6 @@
 import os
+os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
 #os.environ['THEANO_FLAGS']='lib.cnmem=1,device=gpu0'
-os.environ['THEANO_FLAGS']='lib.cnmem=1,contexts=dev0->cuda0,cuda.root=/home/shaofan/installs/cudnnv5/mycuda/'
 
 import sys
 import keras

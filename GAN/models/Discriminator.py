@@ -36,7 +36,7 @@ class Discriminator(Sequential):
             self.add( Convolution2D(nf*(2**s), 5, 5, subsample=(2,2), border_mode='valid', init=InitNormal) )
             self.add( BN() )
 #           self.add( BatchNormalization(beta_init='zero', gamma_init='one', mode=2, axis=1) )
-            self.add( LeakyReLU() )
+            self.add( LeakyReLU(0.2) )
 
         self.add( Flatten() )
         if d_FC is not None:

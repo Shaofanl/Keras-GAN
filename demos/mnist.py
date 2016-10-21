@@ -1,8 +1,9 @@
 import os
-#os.environ['THEANO_FLAGS']='lib.cnmem=1,contexts=dev0->cuda0'
-os.environ['THEANO_FLAGS']='lib.cnmem=0,device=gpu0'
+os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
+#os.environ['THEANO_FLAGS']='lib.cnmem=0,device=gpu0'
 
 import keras
+keras.backend.theano_backend._set_device('dev0') 
 
 import numpy as np
 from sklearn.datasets import fetch_mldata
@@ -33,6 +34,6 @@ if __name__ == '__main__':
     g = Generator(g_size=(1, 28, 28), g_nb_filters=64, g_nb_coding=100, g_scales=2, g_FC=[1024])
     d = Discriminator(d_size=g.g_size, d_nb_filters=64, d_scales=2, d_FC=[1024])
     gan = GAN(g, d)
-    gan.fit(stream, save_dir='./samples', k=1, nbatch=nbatch)
+    gan.fit(stream, save_dir='./samples/mnist', k=1, nbatch=nbatch)
     
 

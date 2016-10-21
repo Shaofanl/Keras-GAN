@@ -67,6 +67,7 @@ class GAN(object):
                     
                     g_loss = gendis.train_on_batch(Z, y)
                     g_loss = float(g_loss)
+                    print 'g_loss', g_loss
                 else:
                     gen_img = gen.predict(Z)
                     real_img = transform(real_img)
@@ -77,6 +78,7 @@ class GAN(object):
 #                   d_loss = float(d_loss)
                     d_loss = dis2batch.train_on_batch([gen_img, real_img], [gen_y, real_y])
                     d_loss = float(d_loss[0])
+                    print 'd_loss', d_loss
 
                     # batch normalization:
                     #   if all inputs are from generated data, or all inputs are from real data, the performance is extremly poor
