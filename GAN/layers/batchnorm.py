@@ -8,9 +8,9 @@ def sharedX(X, dtype=theano.config.floatX, name=None):
     return theano.shared(np.asarray(X, dtype=dtype), name=name)
 
 class BN(Layer):
-    def __init__(self, gamma_beta=True, a=1., e=1e-8, **kwargs):
+    def __init__(self, gamma_beta=True, a=1., e=0., **kwargs):
         self.gamma_beta = gamma_beta
-        self.a = a
+        self.a = 1. #np.random.normal(loc=1.0, scale=0.02)
         self.e = e
         super(BN, self).__init__(**kwargs)
     
@@ -37,7 +37,7 @@ class BN(Layer):
             s = T.mean(T.sqr(x - u), axis=0)
             if self.a != 1:
                 u = (1. - self.a)*0. + self.a*u
-                s = (1. - self.a)*1. + elf.a*s
+                s = (1. - self.a)*1. + self.a*s
             x = (x - u) / T.sqrt(s + self.e)
             if self.gamma_beta:
                 x = x*self.gamma + self.beta

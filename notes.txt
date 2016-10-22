@@ -1,0 +1,6 @@
+Important Notes
+===
+
+- Batchnormalization from keras is unstable
+- Cannot use BN when the postive and negative distribution is very different
+- Tune InitNormal's scale to 0.002 (from 0.02) can enable model to learn on re-id datasets

@@ -59,15 +59,19 @@ class GAN(object):
             n_updates = 0
             for real_img in tqdm(data_stream(), total=nmax/nbatch):
                 ccc += 1
+#               if ccc % 10 == 0:
+#                   import ipdb
+#                   ipdb.set_trace()
                 if ccc > nmax/nbatch: break
 
                 Z = floatX(np.random.uniform(-1., 1., size=(nbatch, gen.g_nb_coding)))
-                if n_updates % (k+1) == 0:
+                if (k>0 and n_updates % (k+1) == 0) or (k<0 and n_updates % (-k+1) != 0): 
                     y = np.array([[1] * nbatch]).reshape(-1, 1)
                     
                     g_loss = gendis.train_on_batch(Z, y)
                     g_loss = float(g_loss)
                     print 'g_loss', g_loss
+                    vis_grid(inverse_transform(gen.predict(Z)), (10, 10), '{}/{}.g_train.png'.format(save_dir, iteration))
                 else:
                     gen_img = gen.predict(Z)
                     real_img = transform(real_img)
@@ -79,6 +83,7 @@ class GAN(object):
                     d_loss = dis2batch.train_on_batch([gen_img, real_img], [gen_y, real_y])
                     d_loss = float(d_loss[0])
                     print 'd_loss', d_loss
+                    vis_grid(inverse_transform(np.concatenate((real_img[:50], gen_img[:50]))), (10, 10), '{}/{}.d_train.png'.format(save_dir, iteration))
 
                     # batch normalization:
                     #   if all inputs are from generated data, or all inputs are from real data, the performance is extremly poor

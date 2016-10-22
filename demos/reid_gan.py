@@ -1,6 +1,9 @@
 import os
-os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda1'
+os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
 #os.environ['THEANO_FLAGS']='lib.cnmem=1,device=gpu0'
+
+import sys
+sys.path.insert(0, '/home/shaofan/.local/lib/python2.7/site-packages/')
 
 import keras
 keras.backend.theano_backend._set_device('dev0')
@@ -31,7 +34,7 @@ if __name__ == '__main__':
                 k=1, 
                 nbatch=nbatch,
                 nmax=nmax,
-                opt=Adam(lr=0.0002, b1=0.5, decay=1e-5))
+                opt=Adam(lr=0.0002, beta_1=0.5, decay=1e-5))
                 #opt=RMSprop(lr=0.01))
     
 
