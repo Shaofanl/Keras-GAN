@@ -43,10 +43,11 @@ class Discriminator(Sequential):
         self.add( Flatten() )
         if d_FC is not None:
             for fc_dim in d_FC:
-                self.add( Dense(fc_dim, init=self.d_init, activation='relu') )
+                self.add( Dense(fc_dim, init=self.d_init) )
+                self.add( LeakyReLU(0.2) )
                 self.add( BN() )
 #               self.add( BatchNormalization(beta_init='zero', gamma_init='one', mode=2) )
-                self.add( Activation('relu') )
+                self.add( LeakyReLU(0.2) )
         self.add( Dense(1, activation='sigmoid', init=self.d_init) )
 
     def discriminate(self, x):

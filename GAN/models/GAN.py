@@ -69,19 +69,19 @@ class GAN(object):
                     
                     g_loss = gendis.train_on_batch(Z, y)
                     g_loss = float(g_loss)
-                    print 'g_loss', g_loss
+#                   print 'g_loss', g_loss
 #                   vis_grid(inverse_transform(gen.predict(Z)), (10, 10), '{}/{}.g_train.png'.format(save_dir, iteration))
                 else:
                     gen_img = gen.predict(Z)
                     real_img = transform(real_img)
-
+                    
                     gen_y, real_y = np.zeros((nbatch, 1)), np.ones((nbatch, 1))
 
 #                   d_loss = dis.train_on_batch(gen_img, gen_y) + dis.train_on_batch(real_img, real_y) 
 #                   d_loss = float(d_loss)
                     d_loss = dis2batch.train_on_batch([gen_img, real_img], [gen_y, real_y])
                     d_loss = float(d_loss[0])
-                    print 'd_loss', d_loss
+#                   print 'd_loss', d_loss
 #                   vis_grid(inverse_transform(np.concatenate((real_img[:50], gen_img[:50]))), (10, 10), '{}/{}.d_train.png'.format(save_dir, iteration))
 
 

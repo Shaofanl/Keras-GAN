@@ -5,6 +5,7 @@ os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0.9,con
 import sys
 import keras
 import theano
+print theano.config.cuda.root
 keras.backend.theano_backend._set_device('dev0')
 
 from keras.models import Sequential

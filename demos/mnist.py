@@ -32,15 +32,20 @@ if __name__ == '__main__':
     x, y, stream = get_mnist(nbatch)
 
 
-    g = Generator(g_size=(1, 28, 28), g_nb_filters=64, g_nb_coding=100, g_scales=2, g_FC=[1024], g_init=InitNormal(0.2))
-    d = Discriminator(d_size=g.g_size, d_nb_filters=64, d_scales=2, d_FC=[1024], d_init=InitNormal(0.2))
+    g = Generator(g_size=(1, 28, 28), g_nb_filters=64, g_nb_coding=100, g_scales=2, g_FC=[1024], g_init=InitNormal(scale=0.02))
+    d = Discriminator(d_size=g.g_size, d_nb_filters=64, d_scales=2, d_FC=[1024], d_init=InitNormal(scale=0.02))
     gan = GAN(g, d)
     from keras.optimizers import Adam, SGD, RMSprop
     gan.fit(stream, 
                 save_dir='./samples/mnist', 
-                k=1, 
+                k=2, 
                 nbatch=nbatch,
-                opt=Adam(lr=0.0002, beta_1=0.5, decay=1e-5))
+                opt=Adam(lr=0.0005, beta_1=0.5, decay=1e-5))
+
+
+# 10/26/16: if not initialize in a proper way
+#           all-zero will appears in BN layer and cause nan
+#           solution: use leaky relu
     
     
 
