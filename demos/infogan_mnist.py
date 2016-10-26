@@ -1,5 +1,5 @@
 import os
-os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
+os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0.9,contexts=dev0->cuda0'
 #os.environ['THEANO_FLAGS']='lib.cnmem=1,device=gpu0'
 
 import sys
@@ -18,6 +18,7 @@ from GAN.models import InfoGenerator, Discriminator, InfoGAN
 from GAN.utils import vis_grid
 from GAN.utils.data import transform, inverse_transform
 from GAN.utils.dist import CategoryDist , UniformDist
+from GAN.utils.init import InitNormal
 
 def get_mnist(nbatch=128):
     mnist = fetch_mldata('MNIST original', data_home='/home/shaofan/.sklearn/') 
@@ -44,11 +45,13 @@ if __name__ == '__main__':
                       g_FC=[1024],
                       g_info=[
                         CategoryDist(n=10, lmbd=1e-3),
-                        UniformDist(min=-1.0,max=+1.0,lmbd=1e-3,stddev_fix=True),
-                        UniformDist(min=-1.0,max=+1.0,lmbd=1e-3,stddev_fix=True),
 #                       UniformDist(min=-1.0,max=+1.0,lmbd=1e-3,stddev_fix=True),
-                      ])
-    d = Discriminator(d_size=g.g_size, d_nb_filters=64, d_scales=2, d_FC=[1024])
+#                       UniformDist(min=-1.0,max=+1.0,lmbd=1e-3,stddev_fix=True),
+#                       UniformDist(min=-1.0,max=+1.0,lmbd=1e-3,stddev_fix=True),
+                      ],
+                      g_init=InitNormal(scale=0.02),
+                      )
+    d = Discriminator(d_size=g.g_size, d_nb_filters=64, d_scales=2, d_FC=[1024], d_init=InitNormal(scale=0.02))
     Q = Sequential([ Dense(200, batch_input_shape=d.layers[-2].output_shape) ,
                      BN(),
                      Activation('relu'),
@@ -57,8 +60,8 @@ if __name__ == '__main__':
 
     gan = InfoGAN(generator=g, discriminator=d, Qdist=Q)
     from keras.optimizers import Adam, SGD, RMSprop
-    gan.fit(stream, save_dir='./samples', k=2, 
+    gan.fit(stream, save_dir='./samples/mnist_info', k=2, 
                                         nmax=nbatch*100,
                                         nbatch=nbatch, 
-                                        opt=RMSprop(lr=0.0005))
-#                                       opt=Adam(lr=0.0001))
+#                                       opt=RMSprop(lr=0.0005))
+                                        opt=Adam(lr=0.0001))
