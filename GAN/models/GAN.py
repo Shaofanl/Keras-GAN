@@ -33,6 +33,7 @@ class GAN(object):
                 save_dir='./'):
         if nmax is None: nmax = nbatch*100
         if opt == None: opt = Adam(lr=0.0001)
+        if not os.path.exists(save_dir): os.makedirs(save_dir)
 
         gen, dis, gendis = self.generator, self.discriminator, self.gan
         gen_input, real_input = Input(dis.input_shape[1:]), Input(dis.input_shape[1:])
