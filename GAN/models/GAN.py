@@ -1,3 +1,4 @@
+import os
 import numpy as np
 np.set_printoptions(precision=3, suppress=True) 
 
@@ -239,7 +240,108 @@ class InfoGAN(object):
                 dis.save_weights('{}/{}_dis_params.h5'.format(save_dir, iteration), overwrite=True)
 
 
+class AEGAN(object):
+    def __init__(self, generator, discriminator, **kwargs):
+        super(AEGAN, self).__init__(**kwargs)
+
+        self.gan = Sequential([generator, discriminator])
+        self.generator = generator
+        self.discriminator = discriminator
+        self.encoder = Sequential([layer for layer in discriminator.layers[:-1]]+\
+                                  [Dense(generator.g_nb_coding, activation='tanh')])
+
+        rec_input = Input(discriminator.input_shape[1:])
+        self.ae = Sequential([layer for layer in self.encoder.layers]+[layer for layer in generator.layers])
+
+    def load(self, prefix):
+        self.generator.load_weights(prefix+'_gen_params.h5')
+        self.discriminator.load_weights(prefix+'_dis_params.h5')
+        self.ae.load_weights(prefix+'_ae_params.h5')
+        print 'loading done'
+
+    def fit(self, data_stream, 
+                nvis=120, 
+                niter=1000,
+                nbatch=128,
+                nmax=None,
+                k=2,
+                opt=None,
+                save_dir='./'):
+        if nmax is None: nmax = nbatch*100
+        if opt == None: opt = Adam(lr=0.0001)
+        if not os.path.exists(save_dir): os.makedirs(save_dir)
+
+        gen, dis = self.generator, self.discriminator 
+        # fix dis and train gen
+        gendis = self.gan
+        # train on two batch separately but update simultaneously
+        gen_input, real_input = Input(dis.input_shape[1:]), Input(dis.input_shape[1:])
+        dis2batch = Model([gen_input, real_input], [dis(gen_input), dis(real_input)])
+        # autoencoder to reconstruct 
+        ae = self.ae
 
 
+        import theano
+        theano.printing.pydotprint(gendis.outputs[0], outfile="pydotprint.pdf", format='pdf') 
+        print 'debug saved'
+
+        vis_grid(data_stream().next(), (5, 12), '{}/sample.png'.format(save_dir))
+        sample_zmb = floatX(np.random.uniform(-1., 1., size=(nvis, gen.g_nb_coding)))
+        vis_grid(inverse_transform(gen.generate(sample_zmb)), (5, 12), '{}/sample_generate.png'.format(save_dir))
+
+
+        # train generative network
+        dis.trainable = False # must prevent dis from updating
+        gendis.compile(optimizer=opt, loss='binary_crossentropy')#fake_generate_loss) # same effect when y===1
+        # train discriminative network
+        dis.trainable = True
+        dis2batch.compile(optimizer=opt, loss='binary_crossentropy')#cross_entropy_loss)
+#       dis.compile(optimizer=opt, loss='binary_crossentropy')#cross_entropy_loss)
+        # jointly trained for reconstruction
+        ae.compile(optimizer=opt, loss='mse')
+
+        for iteration in range(niter):
+            samples = gen.generate(sample_zmb)
+            vis_grid(inverse_transform(samples), (5, 12), '{}/{}.png'.format(save_dir, iteration))
+
+            ccc = 0
+            n_updates = 0
+            for real_img in tqdm(data_stream(), total=nmax/nbatch):
+                ccc += 1
+                if ccc > nmax/nbatch: break
+
+                Z = floatX(np.random.uniform(-1., 1., size=(nbatch, gen.g_nb_coding)))
+                gen_img = gen.predict(Z)
+                real_img = transform(real_img)
+                if (k>0 and n_updates % (k+1) == 0) or (k<0 and n_updates % (-k+1) != 0): 
+                    y = np.array([[1] * nbatch]).reshape(-1, 1)
+                    
+                    g_loss = gendis.train_on_batch(Z, y)
+                    g_loss = float(g_loss)
+#                   print 'g_loss', g_loss
+#                   vis_grid(inverse_transform(gen.predict(Z)), (10, 10), '{}/{}.g_train.png'.format(save_dir, iteration))
+                else: 
+                    gen_y, real_y = np.zeros((nbatch, 1)), np.ones((nbatch, 1))
+
+#                   d_loss = dis.train_on_batch(gen_img, gen_y) + dis.train_on_batch(real_img, real_y) 
+#                   d_loss = float(d_loss)
+                    d_loss = dis2batch.train_on_batch([gen_img, real_img], [gen_y, real_y])
+                    d_loss = float(d_loss[0])
+#                   print 'd_loss', d_loss
+#                   vis_grid(inverse_transform(np.concatenate((real_img[:50], gen_img[:50]))), (10, 10), '{}/{}.d_train.png'.format(save_dir, iteration))
+
+
+
+                    # batch normalization:
+                    #   if all inputs are from generated data, or all inputs are from real data, the performance is extremly poor
+                    #   if the inputs are mixed with generated and real data, the performance is best
+                rec_loss = ae.train_on_batch(real_img, real_img)
+                n_updates += 1
+            print 'n_epochs=%.0f, g_loss=%.4f, d_loss=%.4f, rec_loss=%.4f\n'%(iteration, g_loss, d_loss, rec_loss)
+
+            if iteration% 50 == 0:
+                gen.save_weights('{}/{}_gen_params.h5'.format(save_dir, iteration), overwrite=True)
+                dis.save_weights('{}/{}_dis_params.h5'.format(save_dir, iteration), overwrite=True)
+                ae.save_weights('{}/{}_ae_params.h5'.format(save_dir, iteration), overwrite=True)
 
 

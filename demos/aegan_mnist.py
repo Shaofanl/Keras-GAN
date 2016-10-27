@@ -28,28 +28,33 @@ def get_mnist(nbatch=128):
     return x, y, random_stream
 
 if __name__ == '__main__':
-# init with ae and then run gan
     nbatch = 128
     x, y, stream = get_mnist(nbatch)
 
+    from keras.optimizers import Adam, SGD, RMSprop
 
     g = Generator(g_size=(1, 28, 28), g_nb_filters=64, g_nb_coding=200, g_scales=2, g_FC=[1024], g_init=InitNormal(scale=0.05))
     d = Discriminator(d_size=g.g_size, d_nb_filters=64, d_scales=2, d_FC=[1024], d_init=InitNormal(scale=0.05))
 
-    g.load_weights('models/mnist_ae_g.h5')
-    print g.get_weights()[0].sum()
-    d.load_weights('models/mnist_ae_d.h5')
-    print d.get_weights()[0].sum()
+# init with autoencoder
+    ae = Autoencoder(g, d)
+    ae.fit(stream, 
+            save_dir='./samples/mnist_aegan/ae/', 
+            nbatch=nbatch,
+            opt=Adam(lr=0.002),
+            niter=501)
 
-#    gan = GAN(g, d)
-    gan = AEGAN(g, d)
-    from keras.optimizers import Adam, SGD, RMSprop
-    gan.fit(stream, 
-                save_dir='./samples/mnist', 
+# run aegan 
+    aegan = AEGAN(g, d)
+    aegan.fit(stream, 
+                save_dir='./samples/mnist_aegan/aegan/', 
                 k=1, 
                 nbatch=nbatch,
-                opt=Adam(lr=0.0002, beta_1=0.5, decay=1e-5))
+                opt=Adam(lr=0.0002, beta_1=0.5, decay=1e-5),
+                niter=501)
 
 
+    import ipdb
+    ipdb.set_trace()
         
 

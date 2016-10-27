@@ -1,4 +1,5 @@
 import numpy as np
+import os
 np.set_printoptions(precision=3, suppress=True) 
 
 from Generator import Generator
@@ -22,7 +23,8 @@ class Autoencoder(object):
         super(Autoencoder, self).__init__(**kwargs)
 
         self.ae = Sequential([layer for layer in discriminator.layers[:-1]]+\
-                            [Dense(generator.g_nb_coding, activation='tanh'), generator])
+                            [Dense(generator.g_nb_coding, activation='tanh')]+\
+                            [layer for layer in generator.layers])
         self.generator = generator
         self.discriminator = discriminator
 
@@ -33,6 +35,7 @@ class Autoencoder(object):
                 opt=None,
                 save_dir='./'):
         if opt == None: opt = Adam(lr=0.0001)
+        if not os.path.exists(save_dir): os.makedirs(save_dir)
 
         ae = self.ae
         ae.compile(optimizer=opt, loss='mse')
