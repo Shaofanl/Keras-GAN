@@ -8,5 +8,9 @@ temp/*
 protocol/*
 protocol
 model/*
+reverse/*
 load.py
 *.pdf
+*.png
+*.jpeg
+*.jpg

@@ -73,6 +73,8 @@ class Generator(Sequential):
     def sample(self, batch_size=128):
         return np.random.uniform(-1, 1, size=(batch_size, self.g_nb_coding))
 
+
+
 #   def generate_intermediate(self, x):
 #       return self._generate_intermediate([x])
 
