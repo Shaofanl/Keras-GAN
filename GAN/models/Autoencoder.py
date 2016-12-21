@@ -22,9 +22,12 @@ class Autoencoder(object):
     def __init__(self, generator, discriminator, **kwargs):
         super(Autoencoder, self).__init__(**kwargs)
 
-        self.ae = Sequential([layer for layer in discriminator.layers[:-1]]+\
-                            [Dense(generator.g_nb_coding, activation='tanh')]+\
-                            [layer for layer in generator.layers])
+        self.encoder = Sequential([layer for layer in discriminator.layers[:-1]]+\
+                                  [Dense(generator.g_nb_coding, activation='tanh')])
+        self.autoencoder = Sequential([layer for layer in self.encoder.layers]+[layer for layer in generator.layers])
+#       self.ae = Sequential([layer for layer in discriminator.layers[:-1]]+\
+#                           [Dense(generator.g_nb_coding, activation='tanh')]+\
+#                           [layer for layer in generator.layers])
         self.generator = generator
         self.discriminator = discriminator
 
@@ -37,7 +40,7 @@ class Autoencoder(object):
         if opt == None: opt = Adam(lr=0.0001)
         if not os.path.exists(save_dir): os.makedirs(save_dir)
 
-        ae = self.ae
+        ae = self.autoencoder
         ae.compile(optimizer=opt, loss='mse')
 
         vis_grid(data_stream().next(), (1, 20), '{}/sample.png'.format(save_dir))
@@ -47,6 +50,8 @@ class Autoencoder(object):
 
         def vis_grid_f(epoch, logs):
             vis_grid(inverse_transform(np.concatenate([sampleX, ae.predict(sampleX)], axis=0)), (2, 20), '{}/{}.png'.format(save_dir, epoch))
+            if epoch % 50 == 0:
+                ae.save_weights('{}/{}_ae_params.h5'.format(save_dir, epoch), overwrite=True)
 
         def transform_wrapper():
             for data in data_stream():

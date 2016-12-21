@@ -37,7 +37,7 @@ class Deconvolution2D(Layer):
         new_size = (x.shape[0], k.shape[1], x.shape[2]*self.subsample[0], x.shape[3]*self.subsample[1])
 
         out = gpu_alloc_empty(*new_size)
-        desc = GpuDnnConvDesc(border_mode=self.border_mode, 
+        desc = GpuDnnConvDesc(border_mode=self.border_mode,
                               subsample=self.subsample,
                               conv_mode=self.conv_mode)(out.shape, k.shape)
         return GpuDnnConvGradI()(k, x, out, desc)

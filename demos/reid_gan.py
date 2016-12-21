@@ -1,12 +1,13 @@
 import os
-os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
-#os.environ['THEANO_FLAGS']='lib.cnmem=1,device=gpu0'
+#os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
+os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0.9,device=gpu0'
 
 import sys
 sys.path.insert(0, '/home/shaofan/.local/lib/python2.7/site-packages/')
+sys.path.insert(0, './')
 
 import keras
-keras.backend.theano_backend._set_device('dev0')
+keras.backend.theano_backend._set_device(None)
 
 import numpy as np
 from sklearn.datasets import fetch_mldata
@@ -25,8 +26,8 @@ if __name__ == '__main__':
     va_data, tr_stream, _ = people(pathfile='protocol/cuhk01-train.txt', size=(npxw, npxh), batch_size=nbatch)
 
 
-    g = Generator(g_size=(3, npxh, npxw), g_nb_filters=128, g_nb_coding=500, g_scales=4, g_init=InitNormal(scale=0.002))#, g_FC=[5000])
-    d = Discriminator(d_size=g.g_size, d_nb_filters=128, d_scales=4, d_init=InitNormal(scale=0.002))#, d_FC=[5000])
+    g = Generator(g_size=(3, npxh, npxw), g_nb_filters=128, g_nb_coding=500, g_scales=4, g_init=InitNormal(scale=0.002))
+    d = Discriminator(d_size=g.g_size, d_nb_filters=128, d_scales=4, d_init=InitNormal(scale=0.002))
     gan = GAN(g, d)
 
     from keras.optimizers import Adam, SGD, RMSprop

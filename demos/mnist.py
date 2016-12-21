@@ -1,9 +1,13 @@
 import os
-os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
+#os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
 #os.environ['THEANO_FLAGS']='lib.cnmem=0,device=gpu0'
+os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,device=gpu0'
+import sys
+sys.path.insert(0, './')
+sys.path.insert(0, '/home/shaofan/.local/lib/python2.7/site-packages') 
 
 import keras
-keras.backend.theano_backend._set_device('dev0') 
+keras.backend.theano_backend._set_device(None) 
 
 import numpy as np
 from sklearn.datasets import fetch_mldata
@@ -37,7 +41,7 @@ if __name__ == '__main__':
     gan = GAN(g, d)
     from keras.optimizers import Adam, SGD, RMSprop
     gan.fit(stream, 
-                save_dir='./samples/mnist', 
+                save_dir='./labs/mnist', 
                 k=1, 
                 nbatch=nbatch,
                 opt=Adam(lr=0.0002, beta_1=0.5, decay=1e-5))

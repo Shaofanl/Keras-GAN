@@ -1,6 +1,6 @@
 import os
-os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
-#os.environ['THEANO_FLAGS']='lib.cnmem=0,device=gpu0'
+#os.environ['THEANO_FLAGS']=os.environ.get('THEANO_FLAGS','')+',lib.cnmem=0,contexts=dev0->cuda0'
+os.environ['THEANO_FLAGS']='lib.cnmem=0,device=gpu0'
 
 import keras
 keras.backend.theano_backend._set_device('dev0') 

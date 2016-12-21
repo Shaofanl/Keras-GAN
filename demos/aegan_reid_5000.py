@@ -88,7 +88,6 @@ if __name__ == '__main__':
 
 # run aegan 
     aegan = AEGAN(g, d, ae)
-    aegan.load('./samples/reid_aegan_5000/aegan/60')
     import ipdb
     with ipdb.launch_ipdb_on_exception():
         aegan.fit(tr_stream, 
@@ -105,3 +104,4 @@ if __name__ == '__main__':
 
 #   test(aegan, './samples/reid_aegan_fixed/aegan/150')
 #   feature(aegan, 'protocol/cuhk01-all.txt')
+

@@ -4,3 +4,30 @@
 4. test on re-id dataset 
 5. test loading
 
+
+
+
+
+
+# working logs
++ implement autoencoder-GAN
+
+    - encoding success, but strange distribution
+        + same reid performance with KISSME
+        + exp?res:cetus) fixed gen but update dis when training encoder
+
+    - added pull loss on encoder, but the network go nuts ==> nan
+        + decrease the coefficient (1e-4): it takes longer to meet `nan`
+        + debug the layers: nothing unusual before `nan`
+            + change relu to LeakyRelu to prevent 0: still get `nan`
+        + debug the output: whether the output is unusal (all 0) before `nan`
+            => all code converges to a same value and cause `nan`
+                ? extreme small learning rate
+
+keep on pull
+    => pull 5000: good at top-20 KISSME
+
+lab:
+    + stride LSTM
+        => terrible effect
+    ? continuous LSTM

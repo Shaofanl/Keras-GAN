@@ -1,6 +1,7 @@
 import os
 import numpy as np
 np.set_printoptions(precision=3, suppress=True) 
+import sys
 
 from Generator import Generator
 from Discriminator import Discriminator
@@ -8,13 +9,15 @@ from Discriminator import Discriminator
 import keras.backend as K
 from keras.models import Sequential, Model
 from keras.optimizers import Adam, SGD, RMSprop
-from keras.layers import Input, Dense, Activation
+from keras.layers import Input, Dense, Activation, Lambda
 
 from ..utils.data import floatX, transform, inverse_transform
 from ..utils.vis import vis_grid
 from ..utils.loss import fake_generate_loss, cross_entropy_loss, masked_loss
 
 from tqdm import tqdm 
+
+_SAVE_ITER = 20
 
 class GAN(object):
     def __init__(self, generator, discriminator, **kwargs):
@@ -31,7 +34,9 @@ class GAN(object):
                 nmax=None,
                 k=2,
                 opt=None,
-                save_dir='./'):
+                save_dir='./',
+                transform=transform,
+                inverse_transform=inverse_transform):
         if nmax is None: nmax = nbatch*100
         if opt == None: opt = Adam(lr=0.0001)
         if not os.path.exists(save_dir): os.makedirs(save_dir)
@@ -44,7 +49,7 @@ class GAN(object):
         theano.printing.pydotprint(gendis.outputs[0], outfile="pydotprint.pdf", format='pdf') 
         print 'debug saved'
 
-        vis_grid(data_stream().next(), (5, 12), '{}/sample.png'.format(save_dir))
+        vis_grid(inverse_transform(transform(data_stream().next())), (5, 12), '{}/sample.png'.format(save_dir))
         sample_zmb = floatX(np.random.uniform(-1., 1., size=(nvis, gen.g_nb_coding)))
         vis_grid(inverse_transform(gen.generate(sample_zmb)), (5, 12), '{}/sample_generate.png'.format(save_dir))
 
@@ -52,7 +57,8 @@ class GAN(object):
         dis.trainable = False # must prevent dis from updating
         gendis.compile(optimizer=opt, loss='binary_crossentropy')#fake_generate_loss) # same effect when y===1
         dis.trainable = True
-        dis2batch.compile(optimizer=opt, loss='binary_crossentropy')#cross_entropy_loss)
+        dis2batch.compile(optimizer=opt, loss='binary_crossentropy', 
+                    metrics=['binary_accuracy'])#cross_entropy_loss)
 #       dis.compile(optimizer=opt, loss='binary_crossentropy')#cross_entropy_loss)
 
         for iteration in range(niter):
@@ -61,7 +67,7 @@ class GAN(object):
 
             ccc = 0
             n_updates = 0
-            for real_img in tqdm(data_stream(), total=nmax/nbatch):
+            for real_img in data_stream(): #tqdm(data_stream(), total=nmax/nbatch):
                 ccc += 1
                 if ccc > nmax/nbatch: break
 
@@ -77,12 +83,15 @@ class GAN(object):
                     gen_img = gen.predict(Z)
                     real_img = transform(real_img)
                     
-                    gen_y, real_y = np.zeros((nbatch, 1)), np.ones((nbatch, 1))
+                    gen_y, real_y = np.zeros((nbatch, 1)), 
+#                                   np.ones((nbatch, 1))
+                                    np.random.binomial(1, 0.8, size=(100,)) # can boost training
+
 
 #                   d_loss = dis.train_on_batch(gen_img, gen_y) + dis.train_on_batch(real_img, real_y) 
 #                   d_loss = float(d_loss)
                     d_loss = dis2batch.train_on_batch([gen_img, real_img], [gen_y, real_y])
-                    d_loss = float(d_loss[0])
+                    d_loss, d_gen_loss, d_real_loss, d_gen_acc, d_real_acc = d_loss
 #                   print 'd_loss', d_loss
 #                   vis_grid(inverse_transform(np.concatenate((real_img[:50], gen_img[:50]))), (10, 10), '{}/{}.d_train.png'.format(save_dir, iteration))
 
@@ -93,11 +102,15 @@ class GAN(object):
                     #   if the inputs are mixed with generated and real data, the performance is best
                 n_updates += 1
             print 'n_epochs=%.0f, g_loss=%.4f, d_loss=%.4f\n'%(iteration, g_loss, d_loss)
+            print 'd_loss, d_gen_loss, d_real_loss, d_gen_acc, d_real_acc'
+            print '>> %.4f %.4f %.4f %.4f %.4f'%(d_loss, d_gen_loss, d_real_loss, d_gen_acc, d_real_acc)
+            sys.stdout.flush()
 
-            if iteration% 50 == 0:
+            if iteration%_SAVE_ITER == 0:
                 gen.save_weights('{}/{}_gen_params.h5'.format(save_dir, iteration), overwrite=True)
                 dis.save_weights('{}/{}_dis_params.h5'.format(save_dir, iteration), overwrite=True)
 
+# end of GAN
 
 
 
@@ -235,29 +248,32 @@ class InfoGAN(object):
                 n_updates += 1
             print 'n_epochs=%.0f, g_loss=%.4f=%.4f+%.4f, d_loss=%.4f\n'%(iteration, g_loss_sum, gen_loss, Q_loss, d_loss)
 
-            if iteration% 50 == 0:
+            if iteration% _SAVE_ITER== 0:
                 gen.save_weights('{}/{}_gen_params.h5'.format(save_dir, iteration), overwrite=True)
                 dis.save_weights('{}/{}_dis_params.h5'.format(save_dir, iteration), overwrite=True)
+# end of InfoGAN
 
 
 class AEGAN(object):
-    def __init__(self, generator, discriminator, **kwargs):
+    def __init__(self, generator, discriminator, autoencoder, **kwargs):
         super(AEGAN, self).__init__(**kwargs)
 
         self.gan = Sequential([generator, discriminator])
         self.generator = generator
         self.discriminator = discriminator
-        self.encoder = Sequential([layer for layer in discriminator.layers[:-1]]+\
-                                  [Dense(generator.g_nb_coding, activation='tanh')])
-
-        rec_input = Input(discriminator.input_shape[1:])
-        self.ae = Sequential([layer for layer in self.encoder.layers]+[layer for layer in generator.layers])
+        self.autoencoder = autoencoder
+#       self.encoder = Sequential([layer for layer in discriminator.layers[:-1]]+\
+#                                 [Dense(generator.g_nb_coding, activation='tanh')])
+#       self.ae = Sequential([layer for layer in self.encoder.layers]+[layer for layer in generator.layers])
 
     def load(self, prefix):
         self.generator.load_weights(prefix+'_gen_params.h5')
         self.discriminator.load_weights(prefix+'_dis_params.h5')
-        self.ae.load_weights(prefix+'_ae_params.h5')
+        self.autoencoder.autoencoder.load_weights(prefix+'_ae_params.h5')
         print 'loading done'
+
+    def encode(self, inputs, nbatch=128):
+        return self.autoencoder.encoder.predict(inputs, batch_size=nbatch)
 
     def fit(self, data_stream, 
                 nvis=120, 
@@ -266,6 +282,8 @@ class AEGAN(object):
                 nmax=None,
                 k=2,
                 opt=None,
+                pull=False, pullx=None, pully=None, pullcoef=None,
+                rec_with_only_dis=True,
                 save_dir='./'):
         if nmax is None: nmax = nbatch*100
         if opt == None: opt = Adam(lr=0.0001)
@@ -278,11 +296,28 @@ class AEGAN(object):
         gen_input, real_input = Input(dis.input_shape[1:]), Input(dis.input_shape[1:])
         dis2batch = Model([gen_input, real_input], [dis(gen_input), dis(real_input)])
         # autoencoder to reconstruct 
-        ae = self.ae
+        if pull:
+            input_a = Input(self.autoencoder.encoder.input_shape[1:])
+            input_b = Input(self.autoencoder.encoder.input_shape[1:])
+            code_a = self.autoencoder.encoder(input_a)
+            code_b = self.autoencoder.encoder(input_b)
+            def euclidean_distance(vects):
+                x, y = vects
+                return K.sqrt(K.sum(K.square(x - y), axis=1, keepdims=True))
+            def eucl_dist_output_shape(shapes):
+                shape1, shape2 = shapes
+                return (shape1[0], 1)
+            distance = Lambda(euclidean_distance, output_shape=eucl_dist_output_shape)([code_a, code_b])
+
+            ae = Model([self.autoencoder.autoencoder.input, input_a, input_b], [self.autoencoder.autoencoder.output, distance])
+#           modelA = self.autoencoder.autoencoder
+#           modelB = Model([input_a, input_b], [distance])
+        else:
+            ae = self.autoencoder.autoencoder
 
 
         import theano
-        theano.printing.pydotprint(gendis.outputs[0], outfile="pydotprint.pdf", format='pdf') 
+        theano.printing.pydotprint(gendis.outputs[0], outfile="pydotprint.pdf", format='pdf')
         print 'debug saved'
 
         vis_grid(data_stream().next(), (5, 12), '{}/sample.png'.format(save_dir))
@@ -298,7 +333,34 @@ class AEGAN(object):
         dis2batch.compile(optimizer=opt, loss='binary_crossentropy')#cross_entropy_loss)
 #       dis.compile(optimizer=opt, loss='binary_crossentropy')#cross_entropy_loss)
         # jointly trained for reconstruction
-        ae.compile(optimizer=opt, loss='mse')
+        if rec_with_only_dis:
+            for layer in ae.layers:
+                if layer in gen.layers:
+                    layer.trainable = False
+        else:
+            pass
+
+        if pull:
+            def contrastive_loss(y_true, y_pred):
+                margin = 1.0
+                return pullcoef*K.mean(y_true * K.square(y_pred))# + (1 - y_true) * K.square(K.maximum(margin - y_pred, 0)))
+            ae.compile(optimizer=opt, loss=['mse', contrastive_loss])
+#           modelA.compile(optimizer=opt, loss='mse')
+#           modelB.compile(optimizer=opt, loss=contrastive_loss)
+
+#           _, rec_loss, pull_loss = ae.train_on_batch([real_img], [real_img])
+#           pull_ind = np.random.choice(len(pullx)/2, size=(nbatch, ))
+#           input_a = pullx[pull_ind]
+#           input_b = pullx[pull_ind+len(pullx)/2]
+#           real_img = data_stream().next()
+#           real_img = transform(real_img)
+#           _, rec_loss, pull_loss = ae.train_on_batch([real_img, input_a, input_b], [real_img, np.ones((nbatch, 1))])
+#           print 'test done'
+        else:
+            ae.compile(optimizer=opt, loss='mse')
+
+
+
 
         for iteration in range(niter):
             samples = gen.generate(sample_zmb)
@@ -306,6 +368,7 @@ class AEGAN(object):
 
             ccc = 0
             n_updates = 0
+            sys.stdout.flush()
             for real_img in tqdm(data_stream(), total=nmax/nbatch):
                 ccc += 1
                 if ccc > nmax/nbatch: break
@@ -316,32 +379,76 @@ class AEGAN(object):
                 if (k>0 and n_updates % (k+1) == 0) or (k<0 and n_updates % (-k+1) != 0): 
                     y = np.array([[1] * nbatch]).reshape(-1, 1)
                     
+#                   if np.isnan(gendis.evaluate(Z, y)).any():
+#                       import ipdb
+#                       ipdb.set_trace()
                     g_loss = gendis.train_on_batch(Z, y)
                     g_loss = float(g_loss)
-#                   print 'g_loss', g_loss
+                    print 'g_loss', g_loss
 #                   vis_grid(inverse_transform(gen.predict(Z)), (10, 10), '{}/{}.g_train.png'.format(save_dir, iteration))
                 else: 
                     gen_y, real_y = np.zeros((nbatch, 1)), np.ones((nbatch, 1))
 
 #                   d_loss = dis.train_on_batch(gen_img, gen_y) + dis.train_on_batch(real_img, real_y) 
 #                   d_loss = float(d_loss)
+#                   if np.isnan(dis2batch.evaluate([gen_img, real_img], [gen_y, real_y])).any():
+#                       import ipdb
+#                       ipdb.set_trace()
                     d_loss = dis2batch.train_on_batch([gen_img, real_img], [gen_y, real_y])
                     d_loss = float(d_loss[0])
-#                   print 'd_loss', d_loss
+                    print 'd_loss', d_loss
 #                   vis_grid(inverse_transform(np.concatenate((real_img[:50], gen_img[:50]))), (10, 10), '{}/{}.d_train.png'.format(save_dir, iteration))
-
 
 
                     # batch normalization:
                     #   if all inputs are from generated data, or all inputs are from real data, the performance is extremly poor
                     #   if the inputs are mixed with generated and real data, the performance is best
-                rec_loss = ae.train_on_batch(real_img, real_img)
-                n_updates += 1
-            print 'n_epochs=%.0f, g_loss=%.4f, d_loss=%.4f, rec_loss=%.4f\n'%(iteration, g_loss, d_loss, rec_loss)
+                if pull:
+                    assert pullx != None 
 
-            if iteration% 50 == 0:
-                gen.save_weights('{}/{}_gen_params.h5'.format(save_dir, iteration), overwrite=True)
-                dis.save_weights('{}/{}_dis_params.h5'.format(save_dir, iteration), overwrite=True)
-                ae.save_weights('{}/{}_ae_params.h5'.format(save_dir, iteration), overwrite=True)
+#                   import ipdb
+#                   ipdb.set_trace()
+                    # supervised
+                    pull_ind = np.random.choice(len(pullx)/2, size=(nbatch, ))
+                    input_a = pullx[pull_ind]
+                    input_b = pullx[pull_ind+len(pullx)/2]
+#                   res = ae.predict([real_img, input_a, input_b], batch_size=128, verbose=0)
+#                   if np.isnan(res[0]).any() or np.isnan(res[1]).any():
+#                       import ipdb
+#                       ipdb.set_trace()
+                    code = self.autoencoder.encoder.predict(pullx)
+#                   import ipdb
+#                   ipdb.set_trace()
+                    _, rec_loss, pull_loss = ae.train_on_batch([real_img, input_a, input_b], [real_img, np.ones((nbatch, 1))])
+                    print 'rec_loss', rec_loss, 'pull_loss', pull_loss
+#                   rec_loss = modelA.train_on_batch(real_img, real_img)
+#                   print 'rec_loss', rec_loss
+#                   pull_loss = modelB.train_on_batch([input_a, input_b], [np.ones((nbatch, 1))])
+#                   print 'pull_loss', pull_loss
+                else:
+#                   import ipdb
+#                   ipdb.set_trace()
+                    rec_loss = ae.train_on_batch(real_img, real_img)
+                    print 'rec_loss', rec_loss
+                n_updates += 1
+            if pull:
+                print '\nn_epochs=%.0f, g_loss=%.4f, d_loss=%.4f, rec_loss=%.4f, pull_loss=%.4f\n'%(iteration, g_loss, d_loss, rec_loss, pull_loss)
+            else:
+                print '\nn_epochs=%.0f, g_loss=%.4f, d_loss=%.4f, rec_loss=%.4f\n'%(iteration, g_loss, d_loss, rec_loss)
+
+            if iteration% _SAVE_ITER== 0:
+                self.generator.save_weights('{}/{}_gen_params.h5'.format(save_dir, iteration), overwrite=True)
+                self.discriminator.save_weights('{}/{}_dis_params.h5'.format(save_dir, iteration), overwrite=True)
+                self.autoencoder.autoencoder.save_weights('{}/{}_ae_params.h5'.format(save_dir, iteration), overwrite=True)
+
+# end of AEGAN
+
+
+
+
+class CondGAN(object):
+    pass
+# end of CondGAN
+
 
 
