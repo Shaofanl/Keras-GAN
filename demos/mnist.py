@@ -46,10 +46,11 @@ if __name__ == '__main__':
                 nbatch=nbatch,
                 opt=Adam(lr=0.0002, beta_1=0.5, decay=1e-5))
 
-
 # 10/26/16: if not initialize in a proper way
 #           all-zero will appears in BN layer and cause nan
 #           solution: use leaky relu
+
+
     
     
 

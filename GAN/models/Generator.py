@@ -14,6 +14,46 @@ from ..layers import Deconvolution2D, BN
 from ..utils.init import InitNormal
 from ..utils.dist import ProductDist
 
+class MLP(Sequential):
+    def __init__(self, 
+                    g_size=(3, 128, 64),
+                    g_nb_filters=128,
+                    g_nb_coding=200,
+                    g_init=None,
+                **kwargs):
+        super(MLP, self).__init__(**kwargs)
+        
+        self.g_size = g_size
+        self.g_nb_filters = g_nb_filters
+        self.g_nb_coding = g_nb_coding 
+        self.g_init = g_init if g_init is not None else InitNormal()
+
+        c, h, w = g_size # h and w should be multiply of 16
+        nf = g_nb_filters
+
+        self.add(Dense(g_nb_filters, input_shape=(g_nb_coding,), init=g_init) )
+        self.add(Activation('relu'))
+        self.add(Dense(g_nb_filters, init=g_init))
+        self.add(Activation('relu'))
+        self.add(Dense(g_nb_filters, init=g_init))
+        self.add(Activation('relu'))
+        self.add(Dense(np.prod(g_size), init=g_init))
+        self.add(Reshape(g_size))
+
+    def generate(self, x):
+        return self.predict(x) 
+
+    def random_generate(self, batch_size=128):
+        return self.predict(self.sample(batch_size))
+
+    def sample(self, batch_size=128):
+#       return np.random.uniform(-1, 1, size=(batch_size, self.g_nb_coding))
+        return np.random.normal(0, 1.0, size=(batch_size, self.g_nb_coding))
+
+
+
+
+
 class Generator(Sequential):
     def __init__(self, 
                     g_size=(3, 128, 64),
@@ -38,33 +78,33 @@ class Generator(Sequential):
             self.add( Dense(nf*(2**(g_scales-1)) * (h/2**g_scales) * (w/2**g_scales), input_shape=(g_nb_coding,), init=self.g_init) )
         else:
             self.add( Dense(g_FC[0], init=self.g_init, input_shape=(g_nb_coding,)) )
-            self.add( BN() )
-#           self.add( BatchNormalization(beta_init='zero', gamma_init='one', mode=2) )
-#           self.add( Activation('relu') )
-            self.add( LeakyReLU(0.2) )
+#           self.add( BN() )
+            self.add( BatchNormalization(mode=2) )
+            self.add( Activation('relu') )
+#           self.add( LeakyReLU(0.2) )
             for fc_dim in g_FC[1:]:
                 self.add( Dense(fc_dim, init=self.g_init) )
-                self.add( BN() )
-#               self.add( BatchNormalization(beta_init='zero', gamma_init='one', mode=2) )
-#               self.add( Activation('relu') )
-                self.add( LeakyReLU(0.2) )
+#               self.add( BN() )
+                self.add( BatchNormalization(mode=2) )
+                self.add( Activation('relu') )
+#               self.add( LeakyReLU(0.2) )
             self.add( Dense(nf*(2**(g_scales-1)) * (h/2**g_scales) * (w/2**g_scales), init=self.g_init) )
-        self.add( BN() )
-#       self.add( BatchNormalization(beta_init='zero', gamma_init='one', axis=1, mode=2) )
-#       self.add( Activation('relu') )
-        self.add( LeakyReLU(0.2) )
+#       self.add( BN() )
+        self.add( BatchNormalization(mode=2) )
+        self.add( Activation('relu') )
+#       self.add( LeakyReLU(0.2) )
         self.add( Reshape((nf*(2**(g_scales-1)), h/2**g_scales, w/2**g_scales)) )
 #       self.intermediate = [self.layers[-1].output]
 
         for s in range(g_scales-2, -1, -1):
-            self.add( Deconvolution2D(nf*(2**s), 5, 5, subsample=(2,2), border_mode=(2,2), init=self.g_init) )
-            self.add( BN() )
-#           self.add( BatchNormalization(beta_init='zero', gamma_init='one', axis=1, mode=2) )
-#           self.add( Activation('relu') )
-            self.add( LeakyReLU(0.2) )
+            self.add( Deconvolution2D(nf*(2**s), 3, 3, subsample=(2,2), border_mode=(1,1), init=self.g_init) )
+#           self.add( BN() )
+            self.add( BatchNormalization(axis=1, mode=2) )
+            self.add( Activation('relu') )
+#           self.add( LeakyReLU(0.2) )
 #           self.intermediate.append(self.layers[-1].output)
 
-        self.add( Deconvolution2D(c, 5, 5, subsample=(2,2), border_mode=(2,2), init=self.g_init) )
+        self.add( Deconvolution2D(c, 3, 3, subsample=(2,2), border_mode=(1,1), init=self.g_init) )
         self.add( Activation('tanh') )
 #       self.intermediate.append(self.layers[-1].output)
 #       self._generate_intermediate = K.function([self.input], self.intermediate) 
@@ -73,7 +113,7 @@ class Generator(Sequential):
         return self.predict(x) 
 
     def random_generate(self, batch_size=128):
-        return self.predict(np.random.random((batch_size, self.g_nb_coding)) )
+        return self.predict(self.sample(batch_size))
 
     def sample(self, batch_size=128):
 #       return np.random.uniform(-1, 1, size=(batch_size, self.g_nb_coding))

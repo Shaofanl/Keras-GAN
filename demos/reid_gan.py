@@ -26,17 +26,17 @@ if __name__ == '__main__':
     va_data, tr_stream, _ = people(pathfile='protocol/cuhk01-train.txt', size=(npxw, npxh), batch_size=nbatch)
 
 
-    g = Generator(g_size=(3, npxh, npxw), g_nb_filters=128, g_nb_coding=500, g_scales=4, g_init=InitNormal(scale=0.002))
+    g = Generator(g_size=(3, npxh, npxw), g_nb_filters=128, g_nb_coding=200, g_scales=4, g_init=InitNormal(scale=0.002))
     d = Discriminator(d_size=g.g_size, d_nb_filters=128, d_scales=4, d_init=InitNormal(scale=0.002))
     gan = GAN(g, d)
 
     from keras.optimizers import Adam, SGD, RMSprop
     gan.fit(tr_stream, 
-                save_dir='./samples/cuhk01/', 
+                save_dir='/home/shaofan/Projects/JSTL/transfer/gan/', 
                 k=1, 
                 nbatch=nbatch,
                 nmax=nmax,
-                opt=Adam(lr=0.0002, beta_1=0.5, decay=1e-5))
+                opt=Adam(lr=0.0003, beta_1=0.5, decay=1e-5))
                 #opt=RMSprop(lr=0.01))
     
 

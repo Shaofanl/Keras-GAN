@@ -17,7 +17,7 @@ from ..utils.loss import fake_generate_loss, cross_entropy_loss, masked_loss
 
 from tqdm import tqdm 
 
-_SAVE_ITER = 20
+_SAVE_ITER = 1000000000
 
 class GAN(object):
     def __init__(self, generator, discriminator, **kwargs):
@@ -39,6 +39,7 @@ class GAN(object):
                 inverse_transform=inverse_transform):
         if nmax is None: nmax = nbatch*100
         if opt == None: opt = Adam(lr=0.0001)
+        #if opt == None: opt = [Adam(lr=0.0001), SGD(lr=0.01)]
         if not os.path.exists(save_dir): os.makedirs(save_dir)
 
         gen, dis, gendis = self.generator, self.discriminator, self.gan
@@ -83,9 +84,8 @@ class GAN(object):
                     gen_img = gen.predict(Z)
                     real_img = transform(real_img)
                     
-                    gen_y, real_y = np.zeros((nbatch, 1)), 
+                    gen_y, real_y = np.zeros((nbatch, 1)), np.random.binomial(1, 0.8, size=(nbatch, 1)) # can boost training
 #                                   np.ones((nbatch, 1))
-                                    np.random.binomial(1, 0.8, size=(100,)) # can boost training
 
 
 #                   d_loss = dis.train_on_batch(gen_img, gen_y) + dis.train_on_batch(real_img, real_y) 
@@ -450,5 +450,88 @@ class CondGAN(object):
     pass
 # end of CondGAN
 
+
+
+
+
+class WGAN(object):
+    def __init__(self, generator, critic, **kwargs):
+        super(WGAN, self).__init__(**kwargs)
+
+        self.gan = Sequential([generator, critic])
+        self.generator = generator
+        self.critic = critic 
+
+    def fit(self, data_stream, 
+                nvis=120, 
+                niter=1000,
+                nbatch=64,
+                n_critic=5,
+                opts=None,
+                plot_iter=1,
+                save_dir='./',
+                transform=transform,
+                inverse_transform=inverse_transform):
+        if opts == None: 
+            opts = [RMSprop(lr=0.00005, clipvalue=0.01),
+                    RMSprop(lr=0.00005)]
+        if not os.path.exists(save_dir): os.makedirs(save_dir)
+
+        gen, cri, gencri = self.generator, self.critic , self.gan
+        gen_input, real_input = Input(cri.input_shape[1:]), Input(cri.input_shape[1:])
+        cri2batch = Model([gen_input, real_input], [cri(gen_input), cri(real_input)])
+
+#       import theano
+#       theano.printing.pydotprint(gendis.outputs[0], outfile="pydotprint.pdf", format='pdf') 
+#       print 'debug saved'
+
+        vis_grid(inverse_transform(transform(data_stream().next())), (5, 12), '{}/sample.png'.format(save_dir))
+        sample_zmb = gen.sample(nvis)
+        vis_grid(inverse_transform(gen.generate(sample_zmb)), (5, 12), '{}/sample_generate.png'.format(save_dir))
+            
+        def multiply_loss(y_true, y_pred):
+            return K.mean(y_true*y_pred)
+
+        cri.trainable = True
+        cri.compile(optimizer=opts[0], loss=multiply_loss) #cross_entropy_loss)
+        cri.trainable = False # must prevent cri from updating
+        gencri.compile(optimizer=opts[1], loss=multiply_loss) #fake_generate_loss) # same effect when y===1
+
+        data_stream = data_stream()
+        for iteration in range(niter):
+            samples = gen.generate(sample_zmb)
+            if iteration % plot_iter == 0:
+                vis_grid(inverse_transform(samples), (5, 12), '{}/{}.png'.format(save_dir, iteration))
+
+            _n_critic = n_critic
+            if iteration < 25 or iteration % 500 == 0:
+                _n_critic = 100
+            for j in range(_n_critic+1):
+                real_img = transform(data_stream.next())
+                gen_img = gen.random_generate(nbatch)
+
+                cri.trainable = True
+                cri_gen  = cri.train_on_batch([real_img], [-np.ones((nbatch,1))] )
+                cri_real = cri.train_on_batch([gen_img], [+np.ones((nbatch,1))] )
+
+                for l in cri.layers:
+                    weights = l.get_weights()
+                    weights = [np.clip(w, -0.01, +0.01) for w in weights]
+                    l.set_weights(weights)
+                # clipvalue parameter cannot constraint certain items
+#               print 'c_loss=%.4f (%.4f-%.4f)'%((cri_real-cri_gen), cri_real, cri_gen)
+
+            z = gen.sample(nbatch)
+            y = -np.ones((nbatch, 1))
+            cri.trainable = False 
+            g_loss = gencri.train_on_batch(z, y)
+
+            print 'n_epochs=%d, g_loss=%.4f, c_loss=%.4f (%.4f-%.4f), g_range: %.4f, %.4f'\
+                        %(iteration, g_loss, (cri_real-cri_gen), cri_real, cri_gen, gen_img.min(), gen_img.max())
+            sys.stdout.flush()
+
+            if (iteration+1)%_SAVE_ITER == 0:
+                gen.save_weights('{}/gen_params.h5'.format(save_dir), overwrite=True)
+                cri.save_weights('{}/cri_params.h5'.format(save_dir), overwrite=True)
 
 
