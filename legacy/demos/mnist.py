@@ -7,7 +7,7 @@ sys.path.insert(0, './')
 sys.path.insert(0, '/home/shaofan/.local/lib/python2.7/site-packages') 
 
 import keras
-keras.backend.theano_backend._set_device(None) 
+#keras.backend.theano_backend._set_device(None) 
 
 import numpy as np
 from sklearn.datasets import fetch_mldata

@@ -31,14 +31,15 @@ class MLP(Sequential):
         c, h, w = g_size # h and w should be multiply of 16
         nf = g_nb_filters
 
-        self.add(Dense(g_nb_filters, input_shape=(g_nb_coding,), init=g_init) )
+        self.add(Dense(g_nb_filters, input_shape=(g_nb_coding,)) )
         self.add(Activation('relu'))
-        self.add(Dense(g_nb_filters, init=g_init))
+        self.add(Dense(g_nb_filters))
         self.add(Activation('relu'))
-        self.add(Dense(g_nb_filters, init=g_init))
+        self.add(Dense(g_nb_filters, ))
         self.add(Activation('relu'))
-        self.add(Dense(np.prod(g_size), init=g_init))
+        self.add(Dense(np.prod(g_size), ))
         self.add(Reshape(g_size))
+        g_init(self)
 
     def generate(self, x):
         return self.predict(x) 
@@ -75,39 +76,41 @@ class Generator(Sequential):
         c, h, w = g_size # h and w should be multiply of 16
         nf = g_nb_filters
         if g_FC is None:
-            self.add( Dense(nf*(2**(g_scales-1)) * (h/2**g_scales) * (w/2**g_scales), input_shape=(g_nb_coding,), init=self.g_init) )
+            self.add( Dense(nf*(2**(g_scales-1)) * (h/2**g_scales) * (w/2**g_scales), input_shape=(g_nb_coding,), ) )
         else:
-            self.add( Dense(g_FC[0], init=self.g_init, input_shape=(g_nb_coding,)) )
+            self.add( Dense(g_FC[0], input_shape=(g_nb_coding,)) )
 #           self.add( BN() )
-            self.add( BatchNormalization(mode=2) )
+            self.add( BatchNormalization() )
             self.add( Activation('relu') )
 #           self.add( LeakyReLU(0.2) )
             for fc_dim in g_FC[1:]:
-                self.add( Dense(fc_dim, init=self.g_init) )
+                self.add( Dense(fc_dim, ) )
 #               self.add( BN() )
-                self.add( BatchNormalization(mode=2) )
+                self.add( BatchNormalization() )
                 self.add( Activation('relu') )
 #               self.add( LeakyReLU(0.2) )
-            self.add( Dense(nf*(2**(g_scales-1)) * (h/2**g_scales) * (w/2**g_scales), init=self.g_init) )
+            self.add( Dense(nf*(2**(g_scales-1)) * (h/2**g_scales) * (w/2**g_scales), ) )
 #       self.add( BN() )
-        self.add( BatchNormalization(mode=2) )
+        self.add( BatchNormalization() )
         self.add( Activation('relu') )
 #       self.add( LeakyReLU(0.2) )
         self.add( Reshape((nf*(2**(g_scales-1)), h/2**g_scales, w/2**g_scales)) )
 #       self.intermediate = [self.layers[-1].output]
 
         for s in range(g_scales-2, -1, -1):
-            self.add( Deconvolution2D(nf*(2**s), 3, 3, subsample=(2,2), border_mode=(1,1), init=self.g_init) )
+            self.add( Deconvolution2D(nf*(2**s), 3, 3, subsample=(2,2), border_mode=(1,1), ) )
 #           self.add( BN() )
-            self.add( BatchNormalization(axis=1, mode=2) )
+            self.add( BatchNormalization(axis=1, ) )
             self.add( Activation('relu') )
 #           self.add( LeakyReLU(0.2) )
 #           self.intermediate.append(self.layers[-1].output)
 
-        self.add( Deconvolution2D(c, 3, 3, subsample=(2,2), border_mode=(1,1), init=self.g_init) )
+        self.add( Deconvolution2D(c, 3, 3, subsample=(2,2), border_mode=(1,1), ) )
         self.add( Activation('tanh') )
 #       self.intermediate.append(self.layers[-1].output)
 #       self._generate_intermediate = K.function([self.input], self.intermediate) 
+
+        g_init(self)
 
     def generate(self, x):
         return self.predict(x) 

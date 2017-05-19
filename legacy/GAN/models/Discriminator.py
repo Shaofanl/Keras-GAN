@@ -35,7 +35,7 @@ class Discriminator(Sequential):
             else:
                 self.add( ZeroPadding2D((2, 2)) )
 
-            self.add( Convolution2D(nf*(2**s), 5, 5, subsample=(2,2), border_mode='valid', init=self.d_init) )
+            self.add( Convolution2D(nf*(2**s), 5, 5, subsample=(2,2), border_mode='valid',) )
             self.add( BN() )
 #           self.add( BatchNormalization(beta_init='zero', gamma_init='one', mode=2, axis=1) )
             self.add( LeakyReLU(0.2) )
@@ -43,12 +43,14 @@ class Discriminator(Sequential):
         self.add( Flatten() )
         if d_FC is not None:
             for fc_dim in d_FC:
-                self.add( Dense(fc_dim, init=self.d_init) )
+                self.add( Dense(fc_dim,) )
                 self.add( LeakyReLU(0.2) )
                 self.add( BN() )
 #               self.add( BatchNormalization(beta_init='zero', gamma_init='one', mode=2) )
                 self.add( LeakyReLU(0.2) )
-        self.add( Dense(1, activation='sigmoid', init=self.d_init) )
+        self.add( Dense(1, activation='sigmoid') )
+
+        d_init(self)
 
     def discriminate(self, x):
         return self.predict(x) 
@@ -79,7 +81,7 @@ class Critic(Sequential): # as in Wasserstein GAN
             else:
                 self.add( ZeroPadding2D((2, 2)) )
 
-            self.add( Convolution2D(nf*(2**s), 5, 5, subsample=(2,2), border_mode='valid', init=self.d_init) )
+            self.add( Convolution2D(nf*(2**s), 5, 5, subsample=(2,2), border_mode='valid',) )
             self.add( BN() )
 #           self.add( BatchNormalization(beta_init='zero', gamma_init='one', mode=2, axis=1) )
             self.add( LeakyReLU(0.2) )
@@ -87,11 +89,12 @@ class Critic(Sequential): # as in Wasserstein GAN
         self.add( Flatten() )
         if d_FC is not None:
             for fc_dim in d_FC:
-                self.add( Dense(fc_dim, init=self.d_init) )
+                self.add( Dense(fc_dim,) )
                 self.add( LeakyReLU(0.2) )
                 self.add( BN() )
 #               self.add( BatchNormalization(beta_init='zero', gamma_init='one', mode=2) )
                 self.add( LeakyReLU(0.2) )
-        self.add( Dense(1, activation='linear', init=self.d_init) )
+        self.add( Dense(1, activation='linear',) )
+        d_init(self)
 
 
