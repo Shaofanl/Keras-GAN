@@ -1,6 +1,6 @@
 from keras.models import Model 
 from keras.layers import Input, Dense, BatchNormalization, \
-                         Activation, Conv2D, LeakyReLU, Flatten
+                         Activation, Conv2D, LeakyReLU, Flatten 
 
 def basic_dis(input_shape, nf=128, scale=4, FC=[], bn=True):
     dim, h, w = input_shape
@@ -21,4 +21,20 @@ def basic_dis(input_shape, nf=128, scale=4, FC=[], bn=True):
     x = Dense(1, activation='sigmoid')(x)
 
     return Model(img, x)
+
+
+
+def fc_dis(input_shape, filters=[1024, 512, 256]):
+    dim, h, w = input_shape
+
+    img = Input(input_shape)
+    x = img
+    x = Flatten()(x)
+
+    for f in filters[:-1]:
+        x = Dense(f)(x)
+        x = Activation('relu')(x)
+    x = Dense(filters[-1])(x)
+    return Model(img, x)
+
 

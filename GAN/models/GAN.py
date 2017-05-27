@@ -45,9 +45,10 @@ class GAN(object):
 
     def fit(self, data_generator, 
                 niter=1000,
-                nbatch=128,
+                nbatch=50,
                 k=2,
                 opt=None,
+                pool_size=500,
                 save_dir='./quickshots/',
                 save_iter=5):
         if opt == None: opt = Adam(lr=0.0001)
@@ -59,6 +60,7 @@ class GAN(object):
         vis_grid(self.generate(sample_zmb), (5, 12), '{}/sample_generate.png'.format(save_dir))
 
         g_loss, d_loss = 0, 0
+        fake_pool = []
         for iteration in range(1, niter+1):
             print 'iteration', iteration
             real_img = data_generator(nbatch)
@@ -70,7 +72,12 @@ class GAN(object):
                 g_loss = float(g_loss)
                 print '\tg_loss=%.4f'%(g_loss)
             else:
-                gen_img = self.generate(Z)
+                fake_pool.extend(self.generate(Z))
+                fake_pool = fake_pool[-pool_size:]
+                gen_img = np.array(fake_pool)[np.random.choice(len(fake_pool), size=(nbatch,), replace=False)]
+
+#               gen_img = self.generate(Z)
+
                 gen_y   = np.zeros((nbatch, 1))
                 real_y  = np.ones((nbatch, 1))
                 d_loss = self.dis_trainner.train_on_batch([gen_img, real_img], [gen_y, real_y])
@@ -119,9 +126,10 @@ class iWGAN(GAN):
 
     def fit(self, data_generator, 
                 niter=1000,
-                nbatch=128,
+                nbatch=50,
                 k=2,
                 opt=None,
+                pool_size=500,
                 save_dir='./quickshots/',
                 save_iter=5):
         if opt == None: opt = Adam(lr=0.0001, beta_1=0.5, beta_2=0.9)
@@ -145,6 +153,7 @@ class iWGAN(GAN):
                 print '\tg_loss=%.4f'%(g_loss)
             else:
                 gen_img = self.generate(Z)
+
                 epsilon = np.random.uniform(0, 1, size=(nbatch,1,1,1))
                 interpolation = epsilon*real_img + (1-epsilon)*gen_img
 
