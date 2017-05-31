@@ -50,9 +50,9 @@ class GAN(object):
                 opt=None,
                 pool_size=500,
                 save_dir='./quickshots/',
-                save_iter=5):
+                save_iter=5,):
         if opt == None: opt = Adam(lr=0.0001)
-        self.build(opt=opt)
+        self.build(opt=opt,)
         if not os.path.exists(save_dir): os.makedirs(save_dir)
 
         vis_grid(data_generator(60), (5, 12), '{}/sample_real.png'.format(save_dir))
@@ -99,12 +99,16 @@ class iWGAN(GAN):
     '''
         https://arxiv.org/pdf/1704.00028.pdf
     '''
+
+    def __init__(self, lmbd=10, **kwargs):
+        super(iWGAN, self).__init__(**kwargs)
+        self.lmbd = lmbd 
+
     def generate(self, inputs):
         return self.generator.predict(inputs)
 
     def build(self, **kwargs):
         opt = kwargs['opt']
-        lmbd = kwargs.get('lmbd', 10.0)
 
         gen, dis, gendis = self.generator, self.discriminator, self.gan
 
@@ -118,7 +122,7 @@ class iWGAN(GAN):
         dis2batch = Model([gen_input, real_input, interpolation], [sub, norm]) 
                             # output: D(G(Z))-D(X), norm ===(nones, ones)==> Loss: D(G(Z))-D(X)+lmbd*(norm-1)**2
         dis.trainable = True
-        dis2batch.compile(optimizer=opt, loss=[mean_loss,'mse'], loss_weights=[1.0, lmbd])
+        dis2batch.compile(optimizer=opt, loss=[mean_loss,'mse'], loss_weights=[1.0, self.lmbd])
 
 
         self.gen_trainner = gendis

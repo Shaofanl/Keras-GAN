@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     g = basic_gen((coding,), img_shape, nf=128, scale=2, FC=[256])  
     d = basic_dis(img_shape, nf=128, scale=2, FC=[256])
-    gan = iWGAN(g, d,) #init=InitNormal(scale=0.02))
+    gan = iWGAN(generator=g, discriminator=d, lmbd=10) #init=InitNormal(scale=0.02))
 
     from keras.optimizers import Adam, SGD, RMSprop
     gan.fit(mnist_stream(), 
